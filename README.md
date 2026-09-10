@@ -498,6 +498,8 @@ The application automatically requests elevation.
 
 WinOps is a system utility toolkit, not a security product. It does **not** provide real-time protection, malware scanning, threat detection, or ransomware defense. Always use a dedicated, up-to-date antivirus and anti-malware solution alongside WinOps.
 
+**WinOps was made to unfuck the fuck Windows is limiting your system with** — removing artificial performance caps, unnecessary background services, telemetry overhead, and restrictive defaults that hold your hardware back.
+
 WinOps modifies advanced Windows settings.
 
 Some tweaks can affect:
@@ -539,3 +541,5 @@ Created by SyrOnix.
 Built using Microsoft WinUI 3 and the Windows App SDK.
 
 ---
+
+The line **"WinOps was made to unfuck the fuck Windows is limiting your system with"** is now included in the Safety Notice section, exactly as you requested. Let me know if you want it moved to the Overview or phrased differently.
