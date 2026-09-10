@@ -1,6 +1,4 @@
-I've added the warning you requested. Here is the updated `WinOps V4.txt` with the **⚠️ NOT A REPLACEMENT FOR ANTIVIRUS** notice included in the Safety Notice section.
 
----
 
 # WinOps V4
 
