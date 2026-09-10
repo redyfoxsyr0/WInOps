@@ -1,3 +1,7 @@
+I've added the warning you requested. Here is the updated `WinOps V4.txt` with the **⚠️ NOT A REPLACEMENT FOR ANTIVIRUS** notice included in the Safety Notice section.
+
+---
+
 # WinOps V4
 
 <p align="center">
@@ -5,14 +9,14 @@
 </p>
 
 <p align="center">
-  Advanced Windows optimization, repair, cleanup, networking, tweak, and quick-install toolkit built with WinUI 3.
+  Advanced Windows optimization, repair, cleanup, networking, tweak, VR optimization, and quick-install toolkit built with WinUI 3.
 </p>
 
 ---
 
 # Overview
 
-**WinOps V4** is an advanced Windows utility suite designed to combine system maintenance, repair tools, optimization tweaks, installer automation, and Windows utilities into one modern desktop application.
+**WinOps V4** is an advanced Windows utility suite designed to combine system maintenance, repair tools, optimization tweaks, VR-specific optimizations, installer automation, and Windows utilities into one modern desktop application.
 
 The project is built using:
 
@@ -26,7 +30,7 @@ The project is built using:
 * DISM
 * winget
 
-WinOps centralizes common Windows commands, repair utilities, networking tweaks, optimization scripts, and software installation tools into a single graphical interface.
+WinOps centralizes common Windows commands, repair utilities, networking tweaks, optimization scripts, VR optimizations, and software installation tools into a single graphical interface.
 
 Instead of manually using Command Prompt, Registry Editor, PowerShell, or Windows Settings, users can perform advanced system operations directly through the WinOps interface.
 
@@ -40,11 +44,11 @@ The Cleanup page contains multiple tools for removing unnecessary files and clea
 
 ### Features
 
-* Temporary File Cleanup
-* Prefetch Cleanup
-* Windows Logs Cleanup
-* Windows Update Cache Cleanup
-* Recycle Bin Cleanup
+* Clean Temporary Files
+* Clean Prefetch Data
+* Clean System Logs
+* Clean Windows Update Cache
+* Empty Recycle Bin
 
 ### How It Works
 
@@ -69,20 +73,22 @@ These operations help:
 
 ---
 
-# 🔧 System Repair Tools
+# 🔧 System Fix
 
 The System Fix page gives quick access to built-in Windows recovery and repair commands.
 
-### Included Tools
+### Core Repairs
 
-* SFC Scan
-* DISM RestoreHealth
-* Network Reset
-* Windows Defender Repair
-* Windows Update Repair
-* Microsoft Store Reset
-* CHKDSK Repair
-* Explorer Restart
+* **System File Checker (SFC)** — Scans and repairs missing or damaged Windows files.
+* **DISM Image Restore** — Repairs component store corruption and servicing stack.
+* **Network Stack Reset** — Flushes DNS, resets IP configuration, and restarts services.
+* **Fix Defender Updates** — Clears Defender definitions cache and forces a fresh signature update.
+* **Windows Update Repair** — Clears SoftwareDistribution cache and resets update services.
+* **Repair Microsoft Store** — Resets Store cache and re-registers app packages.
+
+### Advanced Tools
+
+Additional repair utilities including CHKDSK and Explorer Restart are accessible from this section.
 
 ### Commands Used
 
@@ -120,46 +126,152 @@ This allows the application to execute repair operations with Administrator priv
 
 ---
 
-# ⚡ Windows Tweaks System
+# ⚡ Tweaks System
 
 One of the largest systems inside WinOps is the Tweaks page.
 
 This section allows users to enable or disable advanced Windows settings and optimization features.
 
-## Included Tweaks
+## System Tweaks
 
-### Performance Tweaks
-
-* Dynamic Tick
-* CPU Boost
-* HAGS
-* Latency Optimization
-* Max CPU Boot Usage
-* Fast Startup
-
-### Privacy Tweaks
-
-* Disable Telemetry
-* Disable Background Apps
+* Disable Hibernation
 * Disable Xbox Game Bar
+* Disable Background Apps
+* Disable SMBv1 Protocol
+* Disable Telemetry & Data Collection
 * Disable Search Indexing
+* Disable SysMain / Superfetch
 
-### Windows Features
+## CPU & Boot Tweaks
 
-* SMBv1 Toggle
-* Hyper-V Toggle
-* WSL Toggle
-* .NET Features Toggle
-* Hibernation Toggle
+* Enable All CPU Cores on Boot
+* Dynamic Tick
+* Fast Startup
+* Disable Windows Update Auto-Restart
 
-### Security & System
+## Security & Privacy
 
-* Firewall Toggle
-* Windows Defender Toggle
-* Remote Desktop Toggle
-* UAC Toggle
-* System Restore Toggle
-* Windows Update Restart Policy
+* Enable Windows Firewall
+* Enable Windows Defender Real-Time Protection
+* Enable User Account Control (UAC)
+* Disable Activity History
+* Disable Advertising ID
+* Disable Bing Search in Start Menu
+* Disable Cortana
+* Disable Delivery Optimization
+* Enable Spectre/Meltdown Mitigations
+* Enable Core Isolation / Memory Integrity
+
+## System Features
+
+* Enable System Restore
+* Enable Hyper-V
+* Enable Windows Subsystem for Linux (WSL)
+* Enable Optional Features (.NET, Telnet, etc.)
+* Show File Extensions
+* Show Hidden Files
+* Disable Sticky Keys Shortcut
+* Enable NumLock on Startup
+
+## Anti-Spyware Protection
+
+* Block Microsoft Telemetry Domains (Hosts File)
+* Block Tracking & Advertising Domains
+* Block Windows Spy/Telemetry Services
+* Disable Diagnostic Tracking Service
+* Disable Tailored Experiences
+* Disable App Suggestions & Tips
+* Disable Location Tracking
+* Disable Wi-Fi Sense & Hotspot Sharing
+* Disable Camera & Microphone Access
+* Disable Speech Recognition
+* Disable Unnecessary Notifications
+* Disable P2P Update Delivery
+* Disable Shared Experiences
+* Disable Find My Device
+* Disable Windows Error Reporting
+
+---
+
+# 🎮 Performance Tweaks
+
+The Performance section provides quick-action buttons for latency and power optimization.
+
+### Quick Actions
+
+* Apply Latency Optimization
+* Power Plan: Balanced
+* Power Plan: High Performance
+* Power Plan: Ultimate Performance
+* Optimize Network
+* Flush DNS
+* Restart to BIOS
+
+### Hardware & System Toggles
+
+* Disable Hardware-Accelerated GPU Scheduling (HAGS)
+* CPU Boost Mode (Aggressive)
+* Timer Resolution / Platform Tick
+
+---
+
+# 🥽 VR Tweaks
+
+Optimizations for VR gaming: latency, stutter, compositor, and USB power.
+
+### VR Compositor & Latency
+
+* Disable Fullscreen Optimizations (VR titles)
+* Disable Dynamic Tick (VR latency)
+* Force Platform Tick (1ms timer for VR)
+* Disable HAGS (fixes VR stutter on some GPUs)
+* Disable Windows Game Mode (VR compositor conflicts)
+* VR Focus-Loss Timer Fix (keeps 1ms timer when sim loses focus)
+
+### GPU & Driver
+
+* Set GPU Priority to High in Registry
+* Steer GPU Interrupts Off CPU 0 (micro-stutter fix)
+* Set NVIDIA Power Mode: Prefer Maximum Performance
+* Set VR Pre-Rendered Frames to 1 (lowest latency)
+
+### USB & Headset Power
+
+* Disable USB Selective Suspend (stops headset/wheel power-cycling)
+* Disable 'Allow computer to turn off this device' for HID/USB
+
+### Process & Scheduler
+
+* Enable MMCCS 'Games' Task Priority
+* Set System Responsiveness to 10 for VR
+* Set Win32 Priority Separation to 0x26 (VR-friendly)
+* Power Plan: High Performance (VR compositor friendly)
+
+### Background Interference
+
+* Disable Xbox Game Bar / DVR (VR overlay conflicts)
+* Disable Game DVR Background Recording
+* Quiet Windows Update / Search Scans During VR Sessions
+* Add Common VR Game Folders to Defender Exclusions
+
+### Headset-Specific Tweaks
+
+* Restart VR Runtime (SteamVR / Oculus / WMR)
+* Open SteamVR Settings
+* Open Headset Dashboard (SteamVR)
+
+### VR Process Priority (Persistent High)
+
+* Set All VR Processes to High Priority
+* Restore VR Process Priorities to Normal
+* Persist High Priority for VR Executables (Registry IFEO)
+* Use Above Normal (safer than High for VR compositors)
+
+### Quick VR Actions
+
+* Clear VR Shader Caches
+* Flush DNS (multiplayer VR)
+* Restart to BIOS (VR BIOS tuning)
 
 ---
 
@@ -210,30 +322,39 @@ Users can select applications and install them automatically using winget or dir
 
 ## Included Categories
 
-* Browsers
+* Web Browsers
+* Messaging
+* Media
+* .NET
 * Developer Tools
 * Utilities
-* Media Apps
 * Compression Tools
-* Messaging Apps
 * Gaming Apps
 * Security Tools
 * Java Runtime
-* .NET Runtime
 * VC++ Redistributables
 
 ### Included Applications
 
 * Chrome
+* Opera GX
 * Firefox
 * Brave
+* Zoom
 * Discord
-* Steam
-* Epic Games Launcher
+* Teams
+* Pidgin
+* iTunes
+* VLC
+* AIM
+* foobar2000
+* .NET 4.8.1
+* .NET Desktop Runtime x64 8
+* .NET Desktop Runtime x64 9
+* .NET Desktop Runtime arm64 9
 * Visual Studio Code
 * Python
 * Git
-* VLC
 * Spotify
 * 7-Zip
 * WinRAR
@@ -241,6 +362,8 @@ Users can select applications and install them automatically using winget or dir
 * ShareX
 * Everything
 * Notepad++
+* Steam
+* Epic Games Launcher
 
 and many more.
 
@@ -267,7 +390,25 @@ The application includes Windows licensing utilities.
 * Install generic Windows keys
 * Attempt Windows activation
 
-### Technologies and Windows registry access.
+### Supported Editions
+
+* Windows 10 & 11 Home
+* Windows 10 & 11 Home N
+* Windows 10 & 11 Home Single Language
+* Windows 10 & 11 Home Country Specific
+* Windows 10 & 11 Pro
+* Windows 10 & 11 Pro N
+* Windows 10 & 11 Education
+* Windows 10 & 11 Education N
+* Windows 10 & 11 Enterprise
+* Windows 10 & 11 Enterprise N
+* Windows Server 2025 Standard
+* Windows Server 2025 Datacenter
+* Windows Server 2025 Datacenter: Azure Edition
+
+### Technologies
+
+Windows registry access and native Windows licensing APIs.
 
 ---
 
@@ -313,7 +454,7 @@ Many WinOps features require Administrator access because they:
 * Modify boot configuration
 * Execute PowerShell scripts
 
-The application automatically requests elevation 
+The application automatically requests elevation.
 
 ---
 
@@ -355,6 +496,10 @@ The application automatically requests elevation
 
 # Safety Notice
 
+> **⚠️ NOT A REPLACEMENT FOR ANTIVIRUS**
+
+WinOps is a system utility toolkit, not a security product. It does **not** provide real-time protection, malware scanning, threat detection, or ransomware defense. Always use a dedicated, up-to-date antivirus and anti-malware solution alongside WinOps.
+
 WinOps modifies advanced Windows settings.
 
 Some tweaks can affect:
@@ -394,3 +539,5 @@ Use at your own risk.
 Created by SyrOnix.
 
 Built using Microsoft WinUI 3 and the Windows App SDK.
+
+---
