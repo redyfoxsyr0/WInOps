@@ -1,10 +1,4 @@
-
-
 # WinOps V4
-
-<p align="center">
-  <img width="128" height="128" src="Assets/StoreLogo.png" alt="WinOps Logo"/>
-</p>
 
 <p align="center">
   Advanced Windows optimization, repair, cleanup, networking, tweak, VR optimization, and quick-install toolkit built with WinUI 3.
@@ -14,23 +8,20 @@
 
 # Overview
 
-**WinOps V4** is an advanced Windows utility suite designed to combine system maintenance, repair tools, optimization tweaks, VR-specific optimizations, installer automation, and Windows utilities into one modern desktop application.
+**WinOps V4** is an advanced Windows utility suite that combines system maintenance, repair tools, optimization tweaks, VR-specific optimizations, installer automation, and Windows utilities into one modern desktop application.
 
 The project is built using:
 
-* C#
-* .NET
-* WinUI 3
-* Windows App SDK
-* PowerShell
-* Native Windows APIs
-* Registry operations
-* DISM
-* winget
+* C# (.NET 8)
+* WinUI 3 / Windows App SDK (unpackaged, x64)
+* Native Windows APIs (P/Invoke: powrprof, dnsapi, firewall COM)
+* WMI (`Win32_Service`, `SoftwareLicensingService`, Defender provider, `MSFT_NetAdapter*`)
+* Registry / ServiceController / EventLog / System.Text.Json
+* DISM, SFC, winget, bcdedit, netsh (invoked directly — no temp scripts)
 
-WinOps centralizes common Windows commands, repair utilities, networking tweaks, optimization scripts, VR optimizations, and software installation tools into a single graphical interface.
+WinOps centralizes common Windows commands, repair utilities, networking tweaks, optimization settings, VR optimizations, and software installation into a single graphical interface — instead of manually using Command Prompt, Registry Editor, PowerShell, or Windows Settings.
 
-Instead of manually using Command Prompt, Registry Editor, PowerShell, or Windows Settings, users can perform advanced system operations directly through the WinOps interface.
+The codebase is split into real DLLs: a thin WinUI shell plus one class library per feature (`WinOps.Core`, `WinOps.Feature.Tweaks`, `WinOps.Feature.VrTweaks`, `WinOps.Feature.Cleanup`, `WinOps.Feature.SystemFix`, `WinOps.Feature.Activation`, `WinOps.Feature.QuickInstall`), discoverable at runtime through a small plugin contract. Wherever a .NET or native API exists, WinOps uses it — PowerShell/cmd survive only for tools with no API (DISM, SFC,Exe-based repairs, AppX which needs package identity) and for user-saved script artifacts.
 
 ---
 
@@ -38,457 +29,234 @@ Instead of manually using Command Prompt, Registry Editor, PowerShell, or Window
 
 ## 🧹 Cleanup System
 
-The Cleanup page contains multiple tools for removing unnecessary files and clearing cached Windows data.
-
-### Features
+Seven cleanup tasks with per-task status plus a **Clean All** run that reports exactly which tasks failed and why.
 
 * Clean Temporary Files
 * Clean Prefetch Data
+* Clean Thumbnail Cache
+* Empty Recycle Bin (already-empty reports success, not `0x8000FFFF`)
 * Clean System Logs
 * Clean Windows Update Cache
-* Empty Recycle Bin
+* Clean Delivery Optimization Cache
 
-### How It Works
-
-WinOps dynamically creates temporary batch scripts and executes native Windows cleanup commands.
-
-Example:
-
-```bat
-@echo off
-del /s /f /q %temp%\*.*
-rd /s /q %temp%
-```
-
-The application also uses native Windows shell APIs to empty the Recycle Bin directly.
-
-These operations help:
-
-* Free storage space
-* Remove temporary cache files
-* Clear leftover Windows update files
-* Reduce junk accumulation
+Cleanup is done with direct .NET file IO, `ServiceController` for service stops/starts, and the native `SHEmptyRecycleBin` shell API. These operations free storage, remove stale caches, and clear leftover update payloads.
 
 ---
 
 # 🔧 System Fix
 
-The System Fix page gives quick access to built-in Windows recovery and repair commands.
+Quick access to built-in Windows recovery and repair commands, all launched elevated.
 
 ### Core Repairs
 
-* **System File Checker (SFC)** — Scans and repairs missing or damaged Windows files.
-* **DISM Image Restore** — Repairs component store corruption and servicing stack.
-* **Network Stack Reset** — Flushes DNS, resets IP configuration, and restarts services.
-* **Fix Defender Updates** — Clears Defender definitions cache and forces a fresh signature update.
-* **Windows Update Repair** — Clears SoftwareDistribution cache and resets update services.
-* **Repair Microsoft Store** — Resets Store cache and re-registers app packages.
+* **System File Checker (SFC)** — scans and repairs missing or damaged Windows files
+* **DISM Image Restore** — repairs component store corruption
+* **Network Stack Reset** — winsock reset + native DNS flush + IP renew
+* **Fix Defender Updates** — clears definitions cache, forces fresh signatures
+* **Windows Update Repair** — stops services (via API), clears `SoftwareDistribution`/CatRoot, restarts services, runs DISM + SFC
+* **Repair Microsoft Store** — `wsreset` cache reset
+* **Drive Check (CHKDSK)** and **Restart Windows Explorer**
 
-### Advanced Tools
+### Device & Shell Fixes
 
-Additional repair utilities including CHKDSK and Explorer Restart are accessible from this section.
+* Restart Audio services / Bluetooth service / Print Spooler (+ clear queue)
+* Reset Firewall to defaults (via firewall COM API, netsh fallback)
+* Rebuild Icon Cache, Resync System Time, Rebuild Search Index
+* Analyze Component Store, Re-register built-in apps
 
-### Commands Used
+### Defender Whitelist (False Positives)
 
-```cmd
-sfc /scannow
-```
+Because tweakers get flagged, WinOps can whitelist itself and anything else:
 
-```cmd
-DISM /Online /Cleanup-Image /RestoreHealth
-```
+* **Automatic on every launch** — the app adds its own folder + exe to Defender exclusions at startup (verified by re-reading the exclusion list; refuses silently never — if Tamper Protection blocks it, you get a dialog with the exact fix)
+* Manual controls for folder / file / process exclusions, removal, and listing current exclusions
 
-```cmd
-netsh winsock reset
-```
+### Required Runtimes
 
-```cmd
-chkdsk /f /r
-```
-
-### How It Works
-
-WinOps launches elevated command processes using:
-
-```cs
-Process.Start(...)
-```
-
-with:
-
-```cs
-Verb = "runas"
-```
-
-This allows the application to execute repair operations with Administrator privileges.
+* **Automatic on launch** — detects missing .NET 8+ Desktop Runtime / VC++ redist and offers to download + install the official installers
+* Manual Check / Install buttons in the same section
 
 ---
 
 # ⚡ Tweaks System
 
-One of the largest systems inside WinOps is the Tweaks page.
-
-This section allows users to enable or disable advanced Windows settings and optimization features.
+The largest system in WinOps. Every toggle reads live state and applies through registry, service, power, or WMI APIs.
 
 ## System Tweaks
 
-* Disable Hibernation
-* Disable Xbox Game Bar
-* Disable Background Apps
-* Disable SMBv1 Protocol
-* Disable Telemetry & Data Collection
-* Disable Search Indexing
-* Disable SysMain / Superfetch
+* Disable Hibernation, Xbox Game Bar, Background Apps, SMBv1, Telemetry, Search Indexing, SysMain
+* Disable Activity History, Advertising ID, Bing Search, Cortana, Delivery Optimization
+* Show File Extensions / Hidden Files, This PC desktop icon, Explorer recent files
+* Disable Sticky Keys shortcut, NumLock on startup
 
-## CPU & Boot Tweaks
+## Taskbar, Start & Personalization
 
-* Enable All CPU Cores on Boot
-* Dynamic Tick
-* Fast Startup
-* Disable Windows Update Auto-Restart
+* Widgets button, Taskbar alignment / Task View / Search box, End-Task on right-click
+* Dark Mode, Transparency, Window Animations, Search Highlights
+* Suggested Apps, Lock Screen Spotlight, Windows Copilot
+
+## Performance & CPU/Boot
+
+* Latency Optimization, Balanced / High / Ultimate power plans (resolved by name, so custom builds like Atlas work), Timer Resolution / Platform Tick
+* HAGS, CPU Boost Mode, Visual Effects, Memory Compression
+* All CPU cores on boot (`numproc`), Dynamic Tick, Fast Startup
+* Optimize Network (registry + WMI DNS/NetBIOS + netsh, no script files), Flush DNS, Restart to BIOS
 
 ## Security & Privacy
 
-* Enable Windows Firewall
-* Enable Windows Defender Real-Time Protection
-* Enable User Account Control (UAC)
-* Disable Activity History
-* Disable Advertising ID
-* Disable Bing Search in Start Menu
-* Disable Cortana
-* Disable Delivery Optimization
-* Enable Spectre/Meltdown Mitigations
-* Enable Core Isolation / Memory Integrity
+* Firewall, Defender real-time protection (registry first, cmdlet fallback, Tamper note only when both fail), RDP, UAC
+* Spectre/Meltdown mitigations, Core Isolation, Remote Assistance
+* Power Throttling off, AutoPlay, Verbose Boot
+* Disable Windows Update auto-restart, System Restore (WMI), Hyper-V, WSL, NetFx3
 
-## System Features
+## Anti-Spyware
 
-* Enable System Restore
-* Enable Hyper-V
-* Enable Windows Subsystem for Linux (WSL)
-* Enable Optional Features (.NET, Telnet, etc.)
-* Show File Extensions
-* Show Hidden Files
-* Disable Sticky Keys Shortcut
-* Enable NumLock on Startup
+* Block telemetry / tracking / spy domains via hosts file
+* Disable DiagTrack, Tailored Experiences, App Suggestions, Location Tracking, Wi-Fi Sense, Camera/Mic access, Speech Recognition, Notifications, P2P Updates, Shared Experiences, Find My Device, Error Reporting
 
-## Anti-Spyware Protection
+## Batch Actions
 
-* Block Microsoft Telemetry Domains (Hosts File)
-* Block Tracking & Advertising Domains
-* Block Windows Spy/Telemetry Services
-* Disable Diagnostic Tracking Service
-* Disable Tailored Experiences
-* Disable App Suggestions & Tips
-* Disable Location Tracking
-* Disable Wi-Fi Sense & Hotspot Sharing
-* Disable Camera & Microphone Access
-* Disable Speech Recognition
-* Disable Unnecessary Notifications
-* Disable P2P Update Delivery
-* Disable Shared Experiences
-* Disable Find My Device
-* Disable Windows Error Reporting
-
----
-
-# 🎮 Performance Tweaks
-
-The Performance section provides quick-action buttons for latency and power optimization.
-
-### Quick Actions
-
-* Apply Latency Optimization
-* Power Plan: Balanced
-* Power Plan: High Performance
-* Power Plan: Ultimate Performance
-* Optimize Network
-* Flush DNS
-* Restart to BIOS
-
-### Hardware & System Toggles
-
-* Disable Hardware-Accelerated GPU Scheduling (HAGS)
-* CPU Boost Mode (Aggressive)
-* Timer Resolution / Platform Tick
+* Apply All Recommended, Apply All Privacy, Restore Defaults
+* One-click SFC scan, DISM repair, Update-cache clear, Temp clear, DNS flush
 
 ---
 
 # 🥽 VR Tweaks
 
-Optimizations for VR gaming: latency, stutter, compositor, and USB power.
+Latency, stutter, compositor, USB power, and GPU optimizations for VR gaming — with live GPU vendor detection.
 
 ### VR Compositor & Latency
 
-* Disable Fullscreen Optimizations (VR titles)
-* Disable Dynamic Tick (VR latency)
-* Force Platform Tick (1ms timer for VR)
-* Disable HAGS (fixes VR stutter on some GPUs)
-* Disable Windows Game Mode (VR compositor conflicts)
-* VR Focus-Loss Timer Fix (keeps 1ms timer when sim loses focus)
+* Disable Fullscreen Optimizations, Dynamic Tick, Game Mode; Force Platform Tick (1 ms)
+* VR Focus-Loss Timer Fix, GPU Priority High, GPU Interrupt Steering
+* SteamVR settings-file editor (motion smoothing, supersample scale, supersample filtering, reprojection mode — JSON-preserving with backup)
+* OpenXR runtime switcher (SteamVR / Oculus / WMR) with live status
 
-### GPU & Driver
+### GPU & Driver (NVIDIA + AMD)
 
-* Set GPU Priority to High in Registry
-* Steer GPU Interrupts Off CPU 0 (micro-stutter fix)
-* Set NVIDIA Power Mode: Prefer Maximum Performance
-* Set VR Pre-Rendered Frames to 1 (lowest latency)
+* NVIDIA: persistence mode via `nvidia-smi`
+* AMD: disable ULPS / Deep Sleep / Frame Rate Target, clear AMD shader cache
+* HAGS off (fixes stutter on some GPUs), VR pre-rendered frames guidance
 
-### USB & Headset Power
+### USB, Power & Scheduler
 
-* Disable USB Selective Suspend (stops headset/wheel power-cycling)
-* Disable 'Allow computer to turn off this device' for HID/USB
+* Disable USB Selective Suspend + HID power management (stops headset power-cycling)
+* Disable PCIe link-state saving, core parking off, High-Performance plan
+* MMCS Games priority, System Responsiveness, Win32 Priority Separation
+* Do-Not-Disturb (toasts) for sessions, quiet Update/Search scans
 
-### Process & Scheduler
+### Headset & Process Tools
 
-* Enable MMCCS 'Games' Task Priority
-* Set System Responsiveness to 10 for VR
-* Set Win32 Priority Separation to 0x26 (VR-friendly)
-* Power Plan: High Performance (VR compositor friendly)
-
-### Background Interference
-
-* Disable Xbox Game Bar / DVR (VR overlay conflicts)
-* Disable Game DVR Background Recording
-* Quiet Windows Update / Search Scans During VR Sessions
-* Add Common VR Game Folders to Defender Exclusions
-
-### Headset-Specific Tweaks
-
-* Restart VR Runtime (SteamVR / Oculus / WMR)
-* Open SteamVR Settings
-* Open Headset Dashboard (SteamVR)
-
-### VR Process Priority (Persistent High)
-
-* Set All VR Processes to High Priority
-* Restore VR Process Priorities to Normal
-* Persist High Priority for VR Executables (Registry IFEO)
-* Use Above Normal (safer than High for VR compositors)
-
-### Quick VR Actions
-
-* Clear VR Shader Caches
-* Flush DNS (multiplayer VR)
-* Restart to BIOS (VR BIOS tuning)
+* Restart VR runtime, open SteamVR settings / headset dashboard
+* VR process priority: High or Above-Normal, persistent via IFEO, one-click restore
+* Clear VR shader caches, reset SteamVR room setup (backed up), flush DNS, restart to BIOS
+* VR game folders → Defender exclusions
 
 ---
 
-# 🌐 Network Optimization System
+# 🌐 Network Optimization
 
-WinOps includes a networking optimization script designed to improve networking behavior, lower latency, and optimize adapter settings.
+A ~60-step optimization run: TCP stack, DNS, MTU, Winsock, adapter offloads, throttling removal, NetBIOS, DNS cache.
 
-## Included Network Optimizations
-
-* TCP Tweaks
-* DNS Optimization
-* MTU Optimization
-* Winsock Reset
-* Adapter Tweaks
-* Network Throttling Removal
-* Interrupt Moderation Tweaks
-* NetBIOS Tweaks
-* DNS Cache Tweaks
-
-### DNS Providers
-
-* Cloudflare
-* Google DNS
-* Quad9
-* OpenDNS
-
-### Commands Used
-
-```cmd
-netsh int tcp set global autotuninglevel=experimental
-```
-
-```cmd
-netsh winsock reset
-```
-
-```powershell
-Set-DnsClientServerAddress
-```
+* DNS set to Cloudflare (`1.1.1.1` / `1.0.0.1`) + Google (`8.8.8.8` / `8.8.4.4`), IPv4 + IPv6
+* TCP auto-tuning `normal`, CTCP congestion provider, task offload / RSC / chimney tuned
+* Adapter advanced properties (Flow Control, Interrupt Moderation, checksum/RSS) via WMI, best-effort per adapter
 
 ---
 
 # 📦 Quick Install System
 
-The Quick Install page acts as a software installer hub.
+Ninite-style software hub: pick apps across icon-coded category cards and install them all at once.
 
-Users can select applications and install them automatically using winget or direct download URLs.
+* **Direct install** — one elevated `winget install` per app (no wrapper scripts); manual-URL apps open their download pages
+* **Export Script** — saves the selection as a `.ps1` you can reuse on other machines
+* Search filter, Select Popular (★-marked apps), live selection counts, per-row winget/URL badges
 
-## Included Categories
+### Categories
 
-* Web Browsers
-* Messaging
-* Media
-* .NET
-* Developer Tools
-* Utilities
-* Compression Tools
-* Gaming Apps
-* Security Tools
-* Java Runtime
-* VC++ Redistributables
+Web Browsers, Messaging, Media, .NET, Java, Imaging, Documents, Security, File Sharing, Online Storage, Other, Utilities, Compression, VC++ Redistributables, Developer Tools.
 
-### Included Applications
+### Included (selection)
 
-* Chrome
-* Opera GX
-* Firefox
-* Brave
-* Zoom
-* Discord
-* Teams
-* Pidgin
-* iTunes
-* VLC
-* AIM
-* foobar2000
-* .NET 4.8.1
-* .NET Desktop Runtime x64 8
-* .NET Desktop Runtime x64 9
-* .NET Desktop Runtime arm64 9
-* Visual Studio Code
-* Python
-* Git
-* Spotify
-* 7-Zip
-* WinRAR
-* Malwarebytes
-* ShareX
-* Everything
-* Notepad++
-* Steam
-* Epic Games Launcher
-
-and many more.
-
-### How It Works
-
-WinOps dynamically generates PowerShell installation scripts.
-
-The application can:
-
-* Install apps directly
-* Export install scripts
-* Bulk install applications
-* Open direct download links
+Chrome, Firefox, Brave, Discord, Signal, Telegram, VLC, OBS Studio, HandBrake, Spotify, PowerToys, Windows Terminal, VS Code, Git, Python, Notepad++, 7-Zip, Bitwarden, Malwarebytes, ShareX, Everything, Obsidian, LocalSend, RustDesk, qBittorrent, Steam, Epic Games Launcher, LibreOffice, .NET / Java runtimes, VC++ redists — and more.
 
 ---
 
 # 🔑 Windows Key Tools
 
-The application includes Windows licensing utilities.
-
-### Features
-
-* View Windows product key
-* Install generic Windows keys
-* Attempt Windows activation
+* Look up the installed product key + license status (WMI, no scripts)
+* Install generic (GVLK) keys and activate via KMS with 3-host fallback
+* Optional logon Scheduled Task persistence (no batch files)
 
 ### Supported Editions
 
-* Windows 10 & 11 Home
-* Windows 10 & 11 Home N
-* Windows 10 & 11 Home Single Language
-* Windows 10 & 11 Home Country Specific
-* Windows 10 & 11 Pro
-* Windows 10 & 11 Pro N
-* Windows 10 & 11 Education
-* Windows 10 & 11 Education N
-* Windows 10 & 11 Enterprise
-* Windows 10 & 11 Enterprise N
-* Windows Server 2025 Standard
-* Windows Server 2025 Datacenter
-* Windows Server 2025 Datacenter: Azure Edition
-
-### Technologies
-
-Windows registry access and native Windows licensing APIs.
+Windows 10 & 11 Home / Home N / Home Single Language / Home Country Specific / Pro / Pro N / Education / Education N / Enterprise / Enterprise N; Windows Server 2016 / 2019 / 2022 / 2025 (Standard, Datacenter, Essentials where applicable, incl. Azure Edition).
 
 ---
 
 # 🏠 Home Page
 
-The Home page contains:
-
-* Discord link
-* GitHub link
-* Documentation link
-* Support/Donation link
-
-The interface also includes:
-
-* Hover animations
-* Scaling effects
-* Fluent UI styling
-* Interactive cards
+Discord, GitHub, Documentation, and Support cards with hover animations and Fluent styling.
 
 ---
 
-# 🎨 User Interface
+# 🧩 Architecture
 
-WinOps V4 uses:
+```
+WinOps_V4_Unpackaged/
+├── WinOps_V4.csproj          # WinUI 3 shell — navigation + thin pages only
+├── App.xaml(.cs)             # launch
+├── MainWindow.xaml(.cs)      # nav shell, startup whitelist + runtime checks
+├── Pages/                    # one thin UI page per feature (no business logic)
+└── Libs/
+    ├── WinOps.Core.dll               # ProcessRunner, RegistryHelper, ElevationHelper,
+    │                                 # ServiceHelper, RuntimePrereq, Wmi, Plugin loader,
+    │                                 # Native: Shell32, Power (powrprof), DnsApi, FirewallPolicy
+    ├── WinOps.Feature.Tweaks.dll     # TweakService (system/performance/privacy tweaks)
+    ├── WinOps.Feature.VrTweaks.dll   # VrTweakService (VR compositor/GPU/USB/OpenXR/AMD)
+    ├── WinOps.Feature.Cleanup.dll    # CleanupService (7 tasks)
+    ├── WinOps.Feature.SystemFix.dll  # SystemFixService (repairs, whitelist, runtimes)
+    ├── WinOps.Feature.Activation.dll # ActivationService (WMI licensing)
+    └── WinOps.Feature.QuickInstall.dll # CatalogBuilder, WingetService, app models
+```
 
-* WinUI 3
-* Fluent Design
-* Animated cards
-* Responsive layouts
-* Smooth transitions
-* Modern Windows styling
+Each `WinOps.Feature.*` library exposes an `IFeaturePlugin` and is resolved through `PluginLoader`, so features stay decoupled from the UI. Service methods return `OperationResult` and never throw across the UI boundary.
 
----
+### How elevation and execution work
 
-# 🔒 Administrator Permissions
-
-Many WinOps features require Administrator access because they:
-
-* Modify registry values
-* Change Windows networking settings
-* Execute DISM commands
-* Control Windows services
-* Modify boot configuration
-* Execute PowerShell scripts
-
-The application automatically requests elevation.
-
----
-
-# 🧩 Technologies Used
-
-## Languages
-
-* C#
-* PowerShell
-* Batch
-
-## Frameworks
-
-* .NET
-* WinUI 3
-* Windows App SDK
-
-## Windows Technologies
-
-* Registry APIs
-* Process APIs
-* DISM
-* winget
-* BCDEdit
-* PowerCFG
-* NetSH
-* Windows Services
+The app manifest forces Administrator at launch (`requireAdministrator`), so child tools inherit elevation — no per-action UAC prompts. Long or interactive repairs (`sfc`, `DISM`, `chkdsk`) open their own console via `Process.Start(..., Verb = "runas")`; everything else runs in-process through APIs.
 
 ---
 
 # Requirements
 
-* Windows 10 or Windows 11
-* x64 System
-* Administrator privileges recommended
-* Internet connection required for downloads/installations
+* Windows 10 (1809+) or Windows 11, **x64 only**
+* Administrator launch is **forced** by the app manifest (most features need it)
+* .NET 8 Desktop Runtime x64 **or newer** (the build rolls forward to .NET 9/10; if nothing suitable is installed, WinOps offers to install it on launch)
+* Visual C++ 2015–2022 Redistributable x64 (also auto-offered if missing)
+* Internet connection for downloads, winget installs, and runtime fetching
+* The Windows App SDK framework is self-contained — never needs a separate install
+
+### Build from source
+
+Prerequisites: .NET 8 SDK (9 works too), Visual Studio 2022 17.8+ with WinUI / Windows App SDK workload.
+
+```powershell
+dotnet build WinOps_V4.csproj -c Release -a x64
+```
+
+Output lands in `bin/Release/net8.0-windows10.0.19041.0/win-x64/` — ship the whole folder (exe + `WinOps.*.dll` + `Assets`).
+
+---
+
+# 🔒 Administrator Permissions
+
+The manifest requires elevation because WinOps:
+
+* Writes HKLM registry values
+* Controls Windows services and power schemes
+* Edits the BCD store, hosts file, and network stack
+* Runs DISM/SFC/CHKDSK and manages Defender exclusions
 
 ---
 
@@ -496,50 +264,24 @@ The application automatically requests elevation.
 
 > **⚠️ NOT A REPLACEMENT FOR ANTIVIRUS**
 
-WinOps is a system utility toolkit, not a security product. It does **not** provide real-time protection, malware scanning, threat detection, or ransomware defense. Always use a dedicated, up-to-date antivirus and anti-malware solution alongside WinOps.
+WinOps is a system utility toolkit, not a security product. It does **not** provide real-time protection, malware scanning, threat detection, or ransomware defense. Always run a dedicated, up-to-date antivirus alongside WinOps. (Its Defender *toggles* reduce protection — the *whitelist* feature exists precisely so you don't have to disable anything.)
 
 **WinOps was made to unfuck the fuck Windows is limiting your system with** — removing artificial performance caps, unnecessary background services, telemetry overhead, and restrictive defaults that hold your hardware back.
 
-WinOps modifies advanced Windows settings.
+Some tweaks affect performance, security, networking, services, and boot behavior. Before heavy use:
 
-Some tweaks can affect:
-
-* Performance
-* Security
-* Networking
-* Windows services
-* Windows startup behavior
-
-It is recommended to:
-
-* Create a restore point
-* Understand tweaks before applying them
-* Use Administrator mode carefully
+* Create a System Restore point (or use the in-app System Restore toggle + batch Restore Defaults)
+* Understand a tweak before applying it
+* Keep Tamper Protection in mind: it will block Defender-related changes by design
 
 ---
 
 # Disclaimer
 
-This project is provided for educational and utility purposes only.
-
-The developers are not responsible for:
-
-* System instability
-* Broken configurations
-* Data loss
-* Improper tweak usage
-* Third-party software behavior
-
-Use at your own risk.
+Educational and utility purposes only. The developers are not responsible for system instability, broken configurations, data loss, improper tweak usage, or third-party software behavior. Use at your own risk.
 
 ---
 
 # Credits
 
-Created by SyrOnix.
-
-Built using Microsoft WinUI 3 and the Windows App SDK.
-
----
-
-The line **"WinOps was made to unfuck the fuck Windows is limiting your system with"** is now included in the Safety Notice section, exactly as you requested. Let me know if you want it moved to the Overview or phrased differently.
+Created by SyrOnix. Built with WinUI 3 and the Windows App SDK.
